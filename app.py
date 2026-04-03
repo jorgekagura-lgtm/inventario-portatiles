@@ -12,16 +12,14 @@ def conectar_db():
     conn = psycopg2.connect(DATABASE_URL, sslmode='require')
     return conn
 
-# 1. CONFIGURACIÓN INICIAL DE LAS TABLAS
+# 1. CONFIGURACIÓN INICIAL DE LAS TABLAS (SEGURA: NO BORRA DATOS)
 def init_db():
     conn = conectar_db()
     cur = conn.cursor()
     
-    # --- LÍNEA DE EMERGENCIA ---
-    # Borra la tabla vieja para que la nueva se cree con la columna de fecha sin errores
-    cur.execute('DROP TABLE IF EXISTS portatiles CASCADE')
+    # Hemos ELIMINADO la línea DROP TABLE. Ahora tus datos están a salvo.
     
-    # Creamos la tabla de nuevo con la columna 'fecha_registro' integrada
+    # Creamos la tabla de portatiles con la columna de orden 'fecha_registro'
     cur.execute('''CREATE TABLE IF NOT EXISTS portatiles (
                     id TEXT PRIMARY KEY, 
                     descripcion_tecnica TEXT, 
@@ -30,6 +28,7 @@ def init_db():
                     estado TEXT DEFAULT 'Disponible',
                     fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
     
+    # Creamos la tabla de prestamos
     cur.execute('''CREATE TABLE IF NOT EXISTS prestamos (
                     id_prestamo SERIAL PRIMARY KEY,
                     id_portatil TEXT, 
@@ -42,6 +41,7 @@ def init_db():
     cur.close()
     conn.close()
 
+# Ejecutar la inicialización al arrancar
 init_db()
 
 # 2. RUTA PRINCIPAL (ORDENADO POR REGISTRO REAL)
