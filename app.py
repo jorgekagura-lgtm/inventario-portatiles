@@ -37,7 +37,6 @@ init_db()
 def index():
     conn = conectar_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    # Cambio aquí: Se añade el LEFT JOIN para obtener el nombre de la persona activa
     query = '''
         SELECT p.*, pr.persona as usuario_actual
         FROM portatiles p
