@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historial de Movimientos - EASD</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #cec9c9 !important; min-height: 100vh; font-family: 'Segoe UI', sans-serif; margin: 0; }
+
+        .navbar { 
+            background-color: #ffffff !important; 
+            border-bottom: 1px solid #dee2e6; 
+            padding: 12px 0; 
+            margin-bottom: 40px;
+        }
+
+        .navbar-brand img {
+            height: 60px;
+            transition: height 0.3s ease;
+        }
+
+        .navbar-center-title { 
+            font-weight: 800; 
+            color: #333; 
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 1rem;
+        }
+
+        .history-container { 
+            background-color: #ffffff; 
+            border-radius: 20px; 
+            overflow: hidden; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15); 
+            border: 1px solid #ddd; 
+        }
+
+        .history-header { 
+            background-color: #ffffff; 
+            padding: 20px; 
+            border-bottom: 1px solid #eee; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+
+        /* Encabezado Negro como en la imagen */
+        .table thead th { 
+            background-color: #1a1a1a; 
+            color: #00d4ff; 
+            text-transform: uppercase; 
+            font-size: 0.75rem; 
+            letter-spacing: 1px; 
+            padding: 15px; 
+            border: none; 
+        }
+
+        .table tbody td { 
+            padding: 15px; 
+            vertical-align: middle; 
+            border-bottom: 1px solid #eee; 
+            font-size: 0.9rem; 
+        }
+
+        .btn-vaciar { 
+            font-size: 0.75rem; 
+            font-weight: bold; 
+            color: #dc3545; 
+            border: 1px solid #dc3545; 
+            padding: 8px 20px; 
+            border-radius: 20px; 
+            text-decoration: none; 
+            transition: all 0.3s; 
+        }
+        .btn-vaciar:hover { background-color: #dc3545; color: white; }
+
+        .badge-status { font-size: 0.7rem; padding: 6px 12px; border-radius: 50px; font-weight: 700; }
+
+        @media (max-width: 768px) {
+            .navbar-brand img { height: 35px !important; }
+            .navbar-center-title { font-size: 0.8rem; text-align: center; margin: 10px 0; }
+            .navbar .container { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-light shadow-sm">
+        <div class="container d-flex align-items-center justify-content-between">
+            <a class="navbar-brand d-flex align-items-center m-0" href="/">
+                <img src="{{ url_for('static', filename='easd-valencia-1.PNG') }}" class="me-1">
+                <img src="{{ url_for('static', filename='easd-valencia-2.PNG') }}">
+            </a>
+            <div class="navbar-center-title">Gestión Portátiles TIC</div>
+            <div>
+                <a href="/" class="btn btn-dark btn-sm rounded-pill px-4" style="font-size: 0.75rem;">
+                    <i class="bi bi-house-door me-1"></i> INICIO
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mb-5">
+        <div class="history-container">
+            <div class="history-header">
+                <h5 class="m-0 fw-bold text-dark d-flex align-items-center">
+                    <i class="bi bi-journal-text me-2 text-info fs-4"></i> Registro de Movimientos
+                </h5>
+                <a href="/vaciar_historial" class="btn-vaciar" onclick="return confirm('¿Estás seguro de que deseas borrar todo el historial?')">
+                    <i class="bi bi-trash3 me-1"></i> VACIAR LOG
+                </a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle m-0">
+                    <thead>
+                        <tr>
+                            <th class="ps-4">Equipo</th>
+                            <th>Responsable</th>
+                            <th>Fecha Salida</th>
+                            <th>Fecha Entrada</th>
+                            <th class="text-center">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for reg in registros %}
+                        <tr>
+                            <td class="ps-4 fw-bold text-primary">{{ reg.id_portatil }}</td>
+                            <td class="fw-bold text-dark">{{ reg.persona }}</td>
+                            <td><span class="text-muted">{{ reg.fecha_prestamo }}</span></td>
+                            <td>
+                                {% if reg.fecha_devolucion %}
+                                    <span class="text-success fw-bold">{{ reg.fecha_devolucion }}</span>
+                                {% else %}
+                                    <span class="text-danger small fw-bold"><i class="bi bi-clock-history me-1"></i> Pendiente</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if not reg.fecha_devolucion %}
+                                    <span class="badge bg-warning text-dark badge-status text-uppercase">En Curso</span>
+                                {% else %}
+                                    <span class="badge bg-light text-success border badge-status text-uppercase">Completado</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted italic">
+                                <i class="bi bi-info-circle me-2"></i> No hay movimientos registrados todavía.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

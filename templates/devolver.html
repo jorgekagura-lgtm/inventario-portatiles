@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Devolver Portátil - EASD</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #cec9c9 !important; min-height: 100vh; font-family: 'Segoe UI', sans-serif; margin: 0; }
+
+        .navbar { 
+            background-color: #ffffff !important; 
+            border-bottom: 1px solid #dee2e6; 
+            padding: 12px 0; 
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        /* TAMAÑO LOGO PC */
+        .navbar-brand img {
+            height: 60px;
+            transition: height 0.3s ease;
+        }
+
+        .navbar-center-title { 
+            font-weight: 800; 
+            color: #333; 
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+        }
+
+        /* Contenedor estilo "Prestar" */
+        .form-container { 
+            background-color: #1e1e1e; 
+            border-radius: 20px; 
+            padding: 40px; 
+            width: 100%; 
+            max-width: 550px; 
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4); 
+            border: 1px solid #333; 
+            margin: auto;
+        }
+
+        .form-label { color: #aaa; font-weight: bold; font-size: 0.8rem; letter-spacing: 0.5px; }
+        .form-select { background-color: #252525; border: 1px solid #444; color: white; padding: 12px; border-radius: 10px; }
+        
+        /* Enfoque en color ocre */
+        .form-select:focus { background-color: #2b2b2b; border-color: #ffc107; color: white; box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25); }
+
+        /* Botón estilo Ocre (Prestar) */
+        .btn-return { 
+            background-color: #ffc107; 
+            color: #1e1e1e; 
+            font-weight: bold; 
+            border: none; 
+            padding: 15px; 
+            border-radius: 12px; 
+            transition: all 0.3s; 
+            text-transform: uppercase;
+        }
+        .btn-return:hover { 
+            background-color: #e0a800; 
+            transform: translateY(-2px); 
+            box-shadow: 0 5px 15px rgba(255, 193, 7, 0.3); 
+            color: #1e1e1e;
+        }
+
+        .btn-cancel { border-radius: 12px; padding: 12px; color: #ccc; border: 1px solid #444; text-decoration: none; display: flex; align-items: center; justify-content: center; transition: all 0.3s; }
+        .btn-cancel:hover { background-color: #2a2a2a; color: #fff; border-color: #666; }
+
+        .btn-historial { font-size: 0.75rem; font-weight: bold; color: #555; border: 1.5px solid #ddd; border-radius: 20px; padding: 5px 15px; text-decoration: none; }
+
+        /* Color ocre para el icono principal */
+        .text-ocre { color: #ffc107 !important; }
+
+        @media (max-width: 768px) {
+            .navbar-brand img { height: 30px !important; }
+            .navbar-center-title { font-size: 0.7rem; position: static; transform: none; margin: 10px auto; }
+            .navbar .container { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-light shadow-sm">
+        <div class="container d-flex align-items-center justify-content-between">
+            <a class="navbar-brand d-flex align-items-center" href="/">
+                <img src="{{ url_for('static', filename='easd-valencia-1.PNG') }}" class="me-2">
+                <img src="{{ url_for('static', filename='easd-valencia-2.PNG') }}">
+            </a>
+            <div class="navbar-center-title">Gestión Portátiles TIC</div>
+            <div>
+                <a href="/historial" class="btn-historial"><i class="bi bi-clock-history me-1"></i> HISTORIAL</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container d-flex">
+        <div class="form-container">
+            <div class="text-center mb-4">
+                <i class="bi bi-box-arrow-in-down text-ocre fs-1"></i>
+                <h3 class="text-white fw-bold mt-2">Registrar Devolución</h3>
+                <p class="text-muted small text-uppercase" style="letter-spacing: 2px;">Reingreso de equipo al inventario</p>
+            </div>
+            <form method="POST">
+                <div class="mb-4">
+                    <label class="form-label">SELECCIONAR EQUIPO PRESTADO</label>
+                    <select name="id_portatil" class="form-select" required>
+                        <option value="" selected disabled>Equipos actualmente fuera...</option>
+                        {% for p in prestados %}
+                        <option value="{{ p.id }}">{{ p.id }} - prestado a: {{ p.persona }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-return shadow"><i class="bi bi-arrow-repeat me-2"></i>DEVOLVER A INVENTARIO</button>
+                    <a href="/" class="btn-cancel mt-2"><i class="bi bi-arrow-left me-2"></i>VOLVER AL PANEL</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
