@@ -6,21 +6,18 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-# CONFIGURACIÓN DE CONEXIÓN (Detecta si es Render o Local)
+# CONFIGURACIÓN DE CONEXIÓN
 def conectar_db():
-    # En Render usará la variable DATABASE_URL que configuraremos luego
-    # Si estás en local, puedes pegar temporalmente tu URI de Supabase aquí
     DATABASE_URL = os.environ.get('DATABASE_URL')
-    
-    # Conexión a PostgreSQL (Supabase)
     conn = psycopg2.connect(DATABASE_URL, sslmode='require')
     return conn
 
-# 1. CONFIGURACIÓN INICIAL DE LAS TABLAS (Sintaxis Postgres)
+# 1. CONFIGURACIÓN INICIAL DE LAS TABLAS
 def init_db():
     conn = conectar_db()
     cur = conn.cursor()
-    # Tabla portatiles
+    # Tabla portatiles (Añadimos una columna serial oculta para el orden real si fuera necesario, 
+    # pero usaremos el ID o el orden de inserción)
     cur.execute('''CREATE TABLE IF NOT EXISTS portatiles (
                     id TEXT PRIMARY KEY, 
                     descripcion_tecnica TEXT, 
@@ -28,7 +25,6 @@ def init_db():
                     ubicacion TEXT, 
                     estado TEXT DEFAULT 'Disponible')''')
     
-    # Tabla prestamos (En Postgres se usa SERIAL para autoincremento)
     cur.execute('''CREATE TABLE IF NOT EXISTS prestamos (
                     id_prestamo SERIAL PRIMARY KEY,
                     id_portatil TEXT, 
@@ -40,19 +36,18 @@ def init_db():
     cur.close()
     conn.close()
 
-# Ejecutar la creación de tablas al arrancar
 init_db()
 
-# 2. RUTA PRINCIPAL
+# 2. RUTA PRINCIPAL (CORREGIDA PARA EL ORDEN)
 @app.route('/')
 def index():
     conn = conectar_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    query = '''SELECT p.id, p.descripcion_tecnica, p.num_serie, p.estado, p.ubicacion, pr.persona
-               FROM portatiles p
-               LEFT JOIN prestamos pr ON p.id = pr.id_portatil AND pr.fecha_devolucion IS NULL
-               ORDER BY p.id ASC'''
-    cur.execute("SELECT * FROM equipos ORDER BY id DESC")
+    
+    # Hemos cambiado 'equipos' por 'portatiles' y el orden a ASC 
+    # para que aparezcan uno debajo del otro según se crean.
+    cur.execute("SELECT * FROM portatiles ORDER BY id ASC")
+    
     portatiles = cur.fetchall()
     cur.close()
     conn.close()
@@ -128,7 +123,7 @@ def prestar():
         conn.close()
         return redirect(url_for('index'))
     
-    cur.execute("SELECT * FROM portatiles WHERE estado = 'Disponible'")
+    cur.execute("SELECT * FROM portatiles WHERE estado = 'Disponible' ORDER BY id ASC")
     disponibles = cur.fetchall()
     cur.close()
     conn.close()
