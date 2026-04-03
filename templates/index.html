@@ -3,95 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EASD - Gestión TIC</title>
+    <title>Gestión TIC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <style>
-        body { background-color: #c7c7c7; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .navbar { background: white; border-bottom: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .btn-action { padding: 30px; border-radius: 15px; display: flex; flex-direction: column; align-items: center; color: white !important; text-decoration: none; font-weight: 800; font-size: 1.2rem; transition: transform 0.2s; }
-        .btn-action:hover { transform: scale(1.02); }
-        .inventory-box { background: white; border-radius: 15px; overflow: hidden; margin-top: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .text-usuario { color: #e65100; font-weight: 800; text-transform: uppercase; font-size: 0.95rem; }
-        .text-id { font-weight: bold; color: #007bff; text-decoration: none; }
-        .badge-prestado { background-color: #ffc107; color: #000; font-weight: bold; }
+        body { background-color: #c7c7c7; font-family: sans-serif; }
+        .navbar { background: white; border-bottom: 1px solid #ddd; }
+        .btn-action { padding: 25px; border-radius: 15px; display: flex; flex-direction: column; align-items: center; color: white; text-decoration: none; font-weight: bold; }
+        .inventory-box { background: white; border-radius: 15px; overflow: hidden; margin-top: 20px; }
+        .text-usuario { color: #ff5e3a; font-weight: bold; }
     </style>
 </head>
 <body>
-    <nav class="navbar p-3 sticky-top">
+    <nav class="navbar p-3">
         <div class="container d-flex justify-content-between align-items-center">
-            <span class="fw-bold fs-5">GESTIÓN PORTÁTILES TIC</span>
+            <span class="fw-bold">Gestión Portátiles TIC</span>
             <div>
-                <a href="/historial" class="btn btn-sm btn-outline-dark px-3 rounded-pill">Historial</a>
-                <a href="/nuevo_portatil" class="btn btn-sm btn-dark px-3 rounded-pill">+ Nuevo</a>
+                <a href="/historial" class="btn btn-sm btn-outline-dark">Historial</a>
+                <a href="/nuevo_portatil" class="btn btn-sm btn-dark">+ Nuevo</a>
             </div>
         </div>
     </nav>
 
     <div class="container mt-4">
-        <div class="row g-3 mb-4">
+        <div class="row g-3">
             <div class="col-6">
-                <a href="/prestar" class="btn-action" style="background-color: #ff5e3a;">
-                    <i class="bi bi-box-arrow-up fs-2 mb-2"></i> PRESTAR
-                </a>
+                <a href="/prestar" class="btn-action bg-danger">PRESTAR</a>
             </div>
             <div class="col-6">
-                <a href="/devolver" class="btn-action" style="background-color: #b8860b;">
-                    <i class="bi bi-box-arrow-in-down fs-2 mb-2"></i> DEVOLVER
-                </a>
+                <a href="/devolver" class="btn-action bg-warning">DEVOLVER</a>
             </div>
         </div>
 
         <div class="inventory-box">
-            <div class="bg-dark text-white p-3 d-flex justify-content-between align-items-center">
-                <h6 class="m-0"><i class="bi bi-list-task me-2"></i>INVENTARIO DE EQUIPOS</h6>
-                <input type="text" id="busqueda" class="form-control form-control-sm w-25 rounded-pill" placeholder="Buscar equipo...">
+            <div class="bg-dark text-white p-2 d-flex justify-content-between">
+                <span>Inventario</span>
+                <input type="text" id="busqueda" placeholder="Buscar...">
             </div>
-            <div class="table-responsive">
-                <table class="table table-hover align-middle m-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th class="ps-4">ID EQUIPO</th>
-                            <th>UBICACIÓN / USUARIO ACTUAL</th>
-                            <th class="text-center">ESTADO</th>
-                            <th class="text-center">ACCIONES</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for p in portatiles %}
-                        <tr class="fila">
-                            <td class="ps-4 text-id">{{ p.id }}</td>
-                            <td>
-                                {% if p.estado == 'Prestado' %}
-                                    {% if p.usuario_actual %}
-                                        <span class="text-usuario">
-                                            <i class="bi bi-person-fill me-1"></i>{{ p.usuario_actual }}
-                                        </span>
-                                    {% else %}
-                                        <span class="text-muted small italic text-danger">Sin nombre registrado</span>
-                                    {% endif %}
-                                {% else %}
-                                    <span class="text-secondary"><i class="bi bi-geo-alt me-1"></i>{{ p.ubicacion }}</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-center">
-                                {% if p.estado == 'Disponible' %}
-                                    <span class="badge bg-success rounded-pill px-3">Disponible</span>
-                                {% elif p.estado == 'Prestado' %}
-                                    <span class="badge badge-prestado rounded-pill px-3">Prestado</span>
-                                {% else %}
-                                    <span class="badge bg-danger rounded-pill px-3">{{ p.estado }}</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-center">
-                                <a href="/editar_equipo/{{ p.id }}" class="btn btn-sm text-primary"><i class="bi bi-pencil-square fs-5"></i></a>
-                                <a href="/eliminar_equipo/{{ p.id }}" class="btn btn-sm text-danger" onclick="return confirm('¿Eliminar equipo?')"><i class="bi bi-trash3 fs-5"></i></a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Ubicación / Usuario</th>
+                        <th>Estado</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in portatiles %}
+                    <tr class="fila">
+                        <td>{{ p.id }}</td>
+                        <td>
+                            {% if p.estado == 'Prestado' %}
+                                <span class="text-usuario">{{ p.usuario_actual }}</span>
+                            {% else %}
+                                {{ p.ubicacion }}
+                            {% endif %}
+                        </td>
+                        <td>{{ p.estado }}</td>
+                        <td>
+                            <a href="/editar_equipo/{{ p.id }}"><i class="bi bi-pencil"></i></a>
+                            <a href="/eliminar_equipo/{{ p.id }}" class="text-danger"><i class="bi bi-trash"></i></a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 
