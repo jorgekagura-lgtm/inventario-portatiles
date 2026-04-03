@@ -1,41 +1,61 @@
 from flask import Flask, render_template, request, redirect, url_for
-import sqlite3
+import os
+import psycopg2
+from psycopg2.extras import RealDictCursor
 from datetime import datetime
 
 app = Flask(__name__)
 
+# CONFIGURACIÓN DE CONEXIÓN (Detecta si es Render o Local)
 def conectar_db():
-    conn = sqlite3.connect('inventario.db')
-    conn.row_factory = sqlite3.Row
+    # En Render usará la variable DATABASE_URL que configuraremos luego
+    # Si estás en local, puedes pegar temporalmente tu URI de Supabase aquí
+    DATABASE_URL = os.environ.get('DATABASE_URL')
+    
+    # Conexión a PostgreSQL (Supabase)
+    conn = psycopg2.connect(DATABASE_URL, sslmode='require')
     return conn
 
-# 1. CONFIGURACIÓN INICIAL DE LA BASE DE DATOS
-with conectar_db() as con:
-    con.execute('''CREATE TABLE IF NOT EXISTS portatiles (
+# 1. CONFIGURACIÓN INICIAL DE LAS TABLAS (Sintaxis Postgres)
+def init_db():
+    conn = conectar_db()
+    cur = conn.cursor()
+    # Tabla portatiles
+    cur.execute('''CREATE TABLE IF NOT EXISTS portatiles (
                     id TEXT PRIMARY KEY, 
                     descripcion_tecnica TEXT, 
                     num_serie TEXT,
                     ubicacion TEXT, 
-                    estado TEXT DEFAULT "Disponible")''')
+                    estado TEXT DEFAULT 'Disponible')''')
     
-    con.execute('''CREATE TABLE IF NOT EXISTS prestamos (
-                    id_prestamo INTEGER PRIMARY KEY AUTOINCREMENT,
+    # Tabla prestamos (En Postgres se usa SERIAL para autoincremento)
+    cur.execute('''CREATE TABLE IF NOT EXISTS prestamos (
+                    id_prestamo SERIAL PRIMARY KEY,
                     id_portatil TEXT, 
                     persona TEXT, 
                     correo TEXT, 
                     fecha_prestamo TEXT, 
                     fecha_devolucion TEXT)''')
+    conn.commit()
+    cur.close()
+    conn.close()
+
+# Ejecutar la creación de tablas al arrancar
+init_db()
 
 # 2. RUTA PRINCIPAL
 @app.route('/')
 def index():
-    con = conectar_db()
+    conn = conectar_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
     query = '''SELECT p.id, p.descripcion_tecnica, p.num_serie, p.estado, p.ubicacion, pr.persona
                FROM portatiles p
                LEFT JOIN prestamos pr ON p.id = pr.id_portatil AND pr.fecha_devolucion IS NULL
-               ORDER BY p.rowid ASC'''
-    portatiles = con.execute(query).fetchall()
-    con.close()
+               ORDER BY p.id ASC'''
+    cur.execute(query)
+    portatiles = cur.fetchall()
+    cur.close()
+    conn.close()
     return render_template('index.html', portatiles=portatiles)
 
 # 3. AÑADIR NUEVO EQUIPO
@@ -47,22 +67,26 @@ def nuevo_portatil():
         serial = request.form['num_serie'].strip().upper()
         ubi = request.form['ubicacion'].strip()
         
-        con = conectar_db()
+        conn = conectar_db()
+        cur = conn.cursor()
         try:
-            con.execute('INSERT INTO portatiles (id, descripcion_tecnica, num_serie, ubicacion) VALUES (?,?,?,?)', 
+            cur.execute('INSERT INTO portatiles (id, descripcion_tecnica, num_serie, ubicacion) VALUES (%s,%s,%s,%s)', 
                         (id_p, desc, serial, ubi))
-            con.commit()
+            conn.commit()
             return redirect(url_for('index'))
-        except:
-            return render_template('nuevo.html', error="El ID del equipo ya existe.")
+        except Exception as e:
+            conn.rollback()
+            return render_template('nuevo.html', error=f"Error: El ID ya existe o hay un fallo de conexión.")
         finally:
-            con.close()
+            cur.close()
+            conn.close()
     return render_template('nuevo.html')
 
 # 4. EDITAR EQUIPO EXISTENTE
 @app.route('/editar_equipo/<id_p>', methods=['GET', 'POST'])
 def editar_equipo(id_p):
-    con = conectar_db()
+    conn = conectar_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
     if request.method == 'POST':
         nuevo_id = request.form['id_portatil'].strip().upper()
         nueva_desc = request.form['descripcion_tecnica'].strip()
@@ -70,99 +94,117 @@ def editar_equipo(id_p):
         nueva_ubi = request.form['ubicacion'].strip()
         nuevo_estado = request.form['estado']
         
-        con.execute('''UPDATE portatiles 
-                        SET id = ?, descripcion_tecnica = ?, num_serie = ?, ubicacion = ?, estado = ? 
-                        WHERE id = ?''', 
+        cur.execute('''UPDATE portatiles 
+                        SET id = %s, descripcion_tecnica = %s, num_serie = %s, ubicacion = %s, estado = %s 
+                        WHERE id = %s''', 
                     (nuevo_id, nueva_desc, nuevo_serial, nueva_ubi, nuevo_estado, id_p))
-        con.commit()
-        con.close()
+        conn.commit()
+        cur.close()
+        conn.close()
         return redirect(url_for('index'))
     
-    equipo = con.execute('SELECT * FROM portatiles WHERE id = ?', (id_p,)).fetchone()
-    con.close()
+    cur.execute('SELECT * FROM portatiles WHERE id = %s', (id_p,))
+    equipo = cur.fetchone()
+    cur.close()
+    conn.close()
     return render_template('editar.html', equipo=equipo)
 
 # 5. PRESTAR EQUIPO
 @app.route('/prestar', methods=['GET', 'POST'])
 def prestar():
-    con = conectar_db()
+    conn = conectar_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
     if request.method == 'POST':
         id_p = request.form['id_portatil']
         nombre = request.form['nombre'].strip()
         correo = request.form['correo'].strip().lower()
         fecha = datetime.now().strftime("%d/%m/%Y %H:%M")
         
-        con.execute('INSERT INTO prestamos (id_portatil, persona, correo, fecha_prestamo) VALUES (?,?,?,?)', 
+        cur.execute('INSERT INTO prestamos (id_portatil, persona, correo, fecha_prestamo) VALUES (%s,%s,%s,%s)', 
                     (id_p, nombre, correo, fecha))
-        con.execute('UPDATE portatiles SET estado = "Prestado" WHERE id = ?', (id_p,))
-        con.commit()
-        con.close()
+        cur.execute('UPDATE portatiles SET estado = %s WHERE id = %s', ("Prestado", id_p))
+        conn.commit()
+        cur.close()
+        conn.close()
         return redirect(url_for('index'))
     
-    disponibles = con.execute('SELECT * FROM portatiles WHERE estado = "Disponible"').fetchall()
-    con.close()
+    cur.execute("SELECT * FROM portatiles WHERE estado = 'Disponible'")
+    disponibles = cur.fetchall()
+    cur.close()
+    conn.close()
     return render_template('prestar.html', disponibles=disponibles)
 
 # 6. DEVOLVER EQUIPO
 @app.route('/devolver', methods=['GET', 'POST'])
 def devolver():
-    con = conectar_db()
+    conn = conectar_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
     if request.method == 'POST':
         id_p = request.form['id_portatil']
         fecha = datetime.now().strftime("%d/%m/%Y %H:%M")
         
-        con.execute('UPDATE prestamos SET fecha_devolucion = ? WHERE id_portatil = ? AND fecha_devolucion IS NULL', 
+        cur.execute('UPDATE prestamos SET fecha_devolucion = %s WHERE id_portatil = %s AND fecha_devolucion IS NULL', 
                     (fecha, id_p))
-        con.execute('UPDATE portatiles SET estado = "Disponible" WHERE id = ?', (id_p,))
-        con.commit()
-        con.close()
+        cur.execute('UPDATE portatiles SET estado = %s WHERE id = %s', ("Disponible", id_p))
+        conn.commit()
+        cur.close()
+        conn.close()
         return redirect(url_for('index'))
     
     query = '''SELECT p.id, pr.persona 
                 FROM portatiles p 
                 JOIN prestamos pr ON p.id = pr.id_portatil 
-                WHERE p.estado = "Prestado" AND pr.fecha_devolucion IS NULL'''
-    prestados = con.execute(query).fetchall()
-    con.close()
+                WHERE p.estado = 'Prestado' AND pr.fecha_devolucion IS NULL'''
+    cur.execute(query)
+    prestados = cur.fetchall()
+    cur.close()
+    conn.close()
     return render_template('devolver.html', prestados=prestados)
 
 # 7. ELIMINAR EQUIPO
 @app.route('/eliminar_equipo/<id_p>')
 def eliminar_equipo(id_p):
-    con = conectar_db()
-    equipo = con.execute('SELECT estado FROM portatiles WHERE id = ?', (id_p,)).fetchone()
+    conn = conectar_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute('SELECT estado FROM portatiles WHERE id = %s', (id_p,))
+    equipo = cur.fetchone()
     if equipo and equipo['estado'] == 'Prestado':
-        con.close()
+        cur.close()
+        conn.close()
         return "Error: No se puede eliminar un equipo que está prestado."
     
-    con.execute('DELETE FROM portatiles WHERE id = ?', (id_p,))
-    con.execute('DELETE FROM prestamos WHERE id_portatil = ?', (id_p,))
-    con.commit()
-    con.close()
+    cur.execute('DELETE FROM portatiles WHERE id = %s', (id_p,))
+    cur.execute('DELETE FROM prestamos WHERE id_portatil = %s', (id_p,))
+    conn.commit()
+    cur.close()
+    conn.close()
     return redirect(url_for('index'))
 
 # 8. HISTORIAL DE PRÉSTAMOS
 @app.route('/historial')
 def historial():
-    con = conectar_db()
+    conn = conectar_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
     query = '''SELECT id_portatil, persona, fecha_prestamo, fecha_devolucion 
                 FROM prestamos 
                 ORDER BY id_prestamo DESC'''
-    registros = con.execute(query).fetchall()
-    con.close()
+    cur.execute(query)
+    registros = cur.fetchall()
+    cur.close()
+    conn.close()
     return render_template('historial.html', registros=registros)
 
 # 9. VACIAR HISTORIAL
 @app.route('/vaciar_historial')
 def vaciar_historial():
-    con = conectar_db()
-    con.execute('DELETE FROM prestamos WHERE fecha_devolucion IS NOT NULL')
-    con.commit()
-    con.close()
+    conn = conectar_db()
+    cur = conn.cursor()
+    cur.execute('DELETE FROM prestamos WHERE fecha_devolucion IS NOT NULL')
+    conn.commit()
+    cur.close()
+    conn.close()
     return redirect(url_for('historial'))
 
 if __name__ == '__main__':
-    # Render asigna un puerto automáticamente, esto lo detecta
-    import os
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
