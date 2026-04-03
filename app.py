@@ -16,13 +16,14 @@ def conectar_db():
 def init_db():
     conn = conectar_db()
     cur = conn.cursor()
-    # Tabla portatiles
+    # Tabla portatiles con columna de fecha para orden real
     cur.execute('''CREATE TABLE IF NOT EXISTS portatiles (
                     id TEXT PRIMARY KEY, 
                     descripcion_tecnica TEXT, 
                     num_serie TEXT,
                     ubicacion TEXT, 
-                    estado TEXT DEFAULT 'Disponible')''')
+                    estado TEXT DEFAULT 'Disponible',
+                    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
     
     cur.execute('''CREATE TABLE IF NOT EXISTS prestamos (
                     id_prestamo SERIAL PRIMARY KEY,
@@ -37,15 +38,14 @@ def init_db():
 
 init_db()
 
-# 2. RUTA PRINCIPAL (CON ORDEN NATURAL)
+# 2. RUTA PRINCIPAL (ORDENADO POR REGISTRO REAL)
 @app.route('/')
 def index():
     conn = conectar_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
-    # Esta consulta ordena primero por la longitud del texto y luego por el ID.
-    # Esto asegura que PM-1 vaya antes que PM-10 y que PM vaya antes que PW.
-    cur.execute("SELECT * FROM portatiles ORDER BY LENGTH(id) ASC, id ASC")
+    # Ordenamos por fecha_registro para que aparezcan según se crearon
+    cur.execute("SELECT * FROM portatiles ORDER BY fecha_registro ASC")
     
     portatiles = cur.fetchall()
     cur.close()
@@ -64,6 +64,7 @@ def nuevo_portatil():
         conn = conectar_db()
         cur = conn.cursor()
         try:
+            # Insertamos el equipo (la fecha se pone sola)
             cur.execute('INSERT INTO portatiles (id, descripcion_tecnica, num_serie, ubicacion) VALUES (%s,%s,%s,%s)', 
                         (id_p, desc, serial, ubi))
             conn.commit()
@@ -122,7 +123,8 @@ def prestar():
         conn.close()
         return redirect(url_for('index'))
     
-    cur.execute("SELECT * FROM portatiles WHERE estado = 'Disponible' ORDER BY LENGTH(id) ASC, id ASC")
+    # Mantener el orden de registro también en el selector de préstamos
+    cur.execute("SELECT * FROM portatiles WHERE estado = 'Disponible' ORDER BY fecha_registro ASC")
     disponibles = cur.fetchall()
     cur.close()
     conn.close()
@@ -149,7 +151,7 @@ def devolver():
                 FROM portatiles p 
                 JOIN prestamos pr ON p.id = pr.id_portatil 
                 WHERE p.estado = 'Prestado' AND pr.fecha_devolucion IS NULL
-                ORDER BY LENGTH(p.id) ASC, p.id ASC'''
+                ORDER BY p.fecha_registro ASC'''
     cur.execute(query)
     prestados = cur.fetchall()
     cur.close()
