@@ -51,7 +51,7 @@ def index():
     query = '''SELECT p.id, p.descripcion_tecnica, p.num_serie, p.estado, p.ubicacion, pr.persona
                FROM portatiles p
                LEFT JOIN prestamos pr ON p.id = pr.id_portatil AND pr.fecha_devolucion IS NULL
-               ORDER BY p.id ASC'''
+               ORDER BY p.id DESC'''
     cur.execute(query)
     portatiles = cur.fetchall()
     cur.close()
