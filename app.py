@@ -16,8 +16,7 @@ def conectar_db():
 def init_db():
     conn = conectar_db()
     cur = conn.cursor()
-    # Tabla portatiles (Añadimos una columna serial oculta para el orden real si fuera necesario, 
-    # pero usaremos el ID o el orden de inserción)
+    # Tabla portatiles
     cur.execute('''CREATE TABLE IF NOT EXISTS portatiles (
                     id TEXT PRIMARY KEY, 
                     descripcion_tecnica TEXT, 
@@ -38,14 +37,13 @@ def init_db():
 
 init_db()
 
-# 2. RUTA PRINCIPAL (CORREGIDA PARA EL ORDEN)
+# 2. RUTA PRINCIPAL (ORDENADA POR ID: PM-001, PW-002...)
 @app.route('/')
 def index():
     conn = conectar_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
-    # Hemos cambiado 'equipos' por 'portatiles' y el orden a ASC 
-    # para que aparezcan uno debajo del otro según se crean.
+    # Usamos ORDER BY id ASC para que PM-001 vaya antes que PW-002
     cur.execute("SELECT * FROM portatiles ORDER BY id ASC")
     
     portatiles = cur.fetchall()
@@ -123,6 +121,7 @@ def prestar():
         conn.close()
         return redirect(url_for('index'))
     
+    # También ordenamos aquí la lista desplegable de préstamos
     cur.execute("SELECT * FROM portatiles WHERE estado = 'Disponible' ORDER BY id ASC")
     disponibles = cur.fetchall()
     cur.close()
@@ -149,7 +148,8 @@ def devolver():
     query = '''SELECT p.id, pr.persona 
                 FROM portatiles p 
                 JOIN prestamos pr ON p.id = pr.id_portatil 
-                WHERE p.estado = 'Prestado' AND pr.fecha_devolucion IS NULL'''
+                WHERE p.estado = 'Prestado' AND pr.fecha_devolucion IS NULL
+                ORDER BY p.id ASC'''
     cur.execute(query)
     prestados = cur.fetchall()
     cur.close()
