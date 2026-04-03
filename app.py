@@ -12,25 +12,24 @@ def conectar_db():
     conn = psycopg2.connect(DATABASE_URL, sslmode='require')
     return conn
 
-# 1. CONFIGURACIÓN INICIAL DE LAS TABLAS (CON REPARACIÓN DE ORDEN)
+# 1. CONFIGURACIÓN INICIAL DE LAS TABLAS
 def init_db():
     conn = conectar_db()
     cur = conn.cursor()
     
-    # Crear tabla base si no existe
+    # --- LÍNEA DE EMERGENCIA ---
+    # Borra la tabla vieja para que la nueva se cree con la columna de fecha sin errores
+    cur.execute('DROP TABLE IF EXISTS portatiles CASCADE')
+    
+    # Creamos la tabla de nuevo con la columna 'fecha_registro' integrada
     cur.execute('''CREATE TABLE IF NOT EXISTS portatiles (
                     id TEXT PRIMARY KEY, 
                     descripcion_tecnica TEXT, 
                     num_serie TEXT,
                     ubicacion TEXT, 
-                    estado TEXT DEFAULT 'Disponible')''')
+                    estado TEXT DEFAULT 'Disponible',
+                    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
     
-    # REPARACIÓN: Añadir columna de fecha para el orden si no existe
-    try:
-        cur.execute("ALTER TABLE portatiles ADD COLUMN IF NOT EXISTS fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
-    except Exception:
-        pass # Si ya existe o hay error, continuamos
-
     cur.execute('''CREATE TABLE IF NOT EXISTS prestamos (
                     id_prestamo SERIAL PRIMARY KEY,
                     id_portatil TEXT, 
@@ -50,10 +49,8 @@ init_db()
 def index():
     conn = conectar_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    
-    # Ordenamos por la fecha de registro para que aparezcan en fila según se crean
+    # Ordenamos por fecha: El primero que registras aparece arriba, el último abajo
     cur.execute("SELECT * FROM portatiles ORDER BY fecha_registro ASC")
-    
     portatiles = cur.fetchall()
     cur.close()
     conn.close()
@@ -129,7 +126,6 @@ def prestar():
         conn.close()
         return redirect(url_for('index'))
     
-    # Mantener el mismo orden en el desplegable
     cur.execute("SELECT * FROM portatiles WHERE estado = 'Disponible' ORDER BY fecha_registro ASC")
     disponibles = cur.fetchall()
     cur.close()
