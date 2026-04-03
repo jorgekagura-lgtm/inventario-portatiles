@@ -47,7 +47,8 @@ init_db()
 def index():
     conn = conectar_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    # Hacemos un LEFT JOIN para que 'persona' esté disponible en el objeto 'p' del HTML
+    # Esta consulta busca el nombre de la persona en la tabla prestamos
+    # y lo asigna a 'persona' para que el HTML lo encuentre.
     query = '''
         SELECT p.*, pr.persona 
         FROM portatiles p

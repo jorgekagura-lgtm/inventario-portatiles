@@ -188,7 +188,11 @@
                                 </a>
                             </td>
                             <td class="text-ubicacion">
-                                {{ p.persona if p.estado == 'Prestado' else p.ubicacion }}
+                                 {% if p.estado == 'Prestado' %}
+                                    <span style="color: #ff5e3a; font-weight: bold;">{{ p.persona }}</span>
+                                 {% else %}
+                                    {{ p.ubicacion }}
+                                 {% endif %}
                             </td>
                             <td class="text-center">
                                 {% if p.estado == 'Disponible' %}
