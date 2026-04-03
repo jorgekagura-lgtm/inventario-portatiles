@@ -12,19 +12,25 @@ def conectar_db():
     conn = psycopg2.connect(DATABASE_URL, sslmode='require')
     return conn
 
-# 1. CONFIGURACIÓN INICIAL DE LAS TABLAS
+# 1. CONFIGURACIÓN INICIAL DE LAS TABLAS (CON REPARACIÓN DE ORDEN)
 def init_db():
     conn = conectar_db()
     cur = conn.cursor()
-    # Tabla portatiles con columna de fecha para orden real
+    
+    # Crear tabla base si no existe
     cur.execute('''CREATE TABLE IF NOT EXISTS portatiles (
                     id TEXT PRIMARY KEY, 
                     descripcion_tecnica TEXT, 
                     num_serie TEXT,
                     ubicacion TEXT, 
-                    estado TEXT DEFAULT 'Disponible',
-                    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+                    estado TEXT DEFAULT 'Disponible')''')
     
+    # REPARACIÓN: Añadir columna de fecha para el orden si no existe
+    try:
+        cur.execute("ALTER TABLE portatiles ADD COLUMN IF NOT EXISTS fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    except Exception:
+        pass # Si ya existe o hay error, continuamos
+
     cur.execute('''CREATE TABLE IF NOT EXISTS prestamos (
                     id_prestamo SERIAL PRIMARY KEY,
                     id_portatil TEXT, 
@@ -32,6 +38,7 @@ def init_db():
                     correo TEXT, 
                     fecha_prestamo TEXT, 
                     fecha_devolucion TEXT)''')
+    
     conn.commit()
     cur.close()
     conn.close()
@@ -44,7 +51,7 @@ def index():
     conn = conectar_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
-    # Ordenamos por fecha_registro para que aparezcan según se crearon
+    # Ordenamos por la fecha de registro para que aparezcan en fila según se crean
     cur.execute("SELECT * FROM portatiles ORDER BY fecha_registro ASC")
     
     portatiles = cur.fetchall()
@@ -64,7 +71,6 @@ def nuevo_portatil():
         conn = conectar_db()
         cur = conn.cursor()
         try:
-            # Insertamos el equipo (la fecha se pone sola)
             cur.execute('INSERT INTO portatiles (id, descripcion_tecnica, num_serie, ubicacion) VALUES (%s,%s,%s,%s)', 
                         (id_p, desc, serial, ubi))
             conn.commit()
@@ -123,7 +129,7 @@ def prestar():
         conn.close()
         return redirect(url_for('index'))
     
-    # Mantener el orden de registro también en el selector de préstamos
+    # Mantener el mismo orden en el desplegable
     cur.execute("SELECT * FROM portatiles WHERE estado = 'Disponible' ORDER BY fecha_registro ASC")
     disponibles = cur.fetchall()
     cur.close()
