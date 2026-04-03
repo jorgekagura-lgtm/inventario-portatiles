@@ -37,14 +37,15 @@ def init_db():
 
 init_db()
 
-# 2. RUTA PRINCIPAL (ORDENADA POR ID: PM-001, PW-002...)
+# 2. RUTA PRINCIPAL (CON ORDEN NATURAL)
 @app.route('/')
 def index():
     conn = conectar_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
-    # Usamos ORDER BY id ASC para que PM-001 vaya antes que PW-002
-    cur.execute("SELECT * FROM portatiles ORDER BY id ASC")
+    # Esta consulta ordena primero por la longitud del texto y luego por el ID.
+    # Esto asegura que PM-1 vaya antes que PM-10 y que PM vaya antes que PW.
+    cur.execute("SELECT * FROM portatiles ORDER BY LENGTH(id) ASC, id ASC")
     
     portatiles = cur.fetchall()
     cur.close()
@@ -121,8 +122,7 @@ def prestar():
         conn.close()
         return redirect(url_for('index'))
     
-    # También ordenamos aquí la lista desplegable de préstamos
-    cur.execute("SELECT * FROM portatiles WHERE estado = 'Disponible' ORDER BY id ASC")
+    cur.execute("SELECT * FROM portatiles WHERE estado = 'Disponible' ORDER BY LENGTH(id) ASC, id ASC")
     disponibles = cur.fetchall()
     cur.close()
     conn.close()
@@ -149,7 +149,7 @@ def devolver():
                 FROM portatiles p 
                 JOIN prestamos pr ON p.id = pr.id_portatil 
                 WHERE p.estado = 'Prestado' AND pr.fecha_devolucion IS NULL
-                ORDER BY p.id ASC'''
+                ORDER BY LENGTH(p.id) ASC, p.id ASC'''
     cur.execute(query)
     prestados = cur.fetchall()
     cur.close()
