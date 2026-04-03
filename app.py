@@ -37,11 +37,18 @@ init_db()
 def index():
     conn = conectar_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
+    # Consulta mejorada: pedimos explícitamente los datos de portatiles y el nombre del prestamo activo
     query = '''
-        SELECT p.*, pr.persona as usuario_actual
+        SELECT 
+            p.id, 
+            p.descripcion_tecnica, 
+            p.num_serie, 
+            p.ubicacion, 
+            p.estado, 
+            pr.persona AS usuario_actual
         FROM portatiles p
         LEFT JOIN prestamos pr ON p.id = pr.id_portatil AND pr.fecha_devolucion IS NULL
-        ORDER BY p.fecha_registro ASC
+        ORDER BY p.id ASC
     '''
     cur.execute(query)
     portatiles = cur.fetchall()
@@ -102,7 +109,7 @@ def prestar():
         cur.close()
         conn.close()
         return redirect(url_for('index'))
-    cur.execute("SELECT * FROM portatiles WHERE estado = 'Disponible' ORDER BY fecha_registro ASC")
+    cur.execute("SELECT * FROM portatiles WHERE estado = 'Disponible' ORDER BY id ASC")
     disponibles = cur.fetchall()
     cur.close()
     conn.close()
