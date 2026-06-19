@@ -64,15 +64,23 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
         
-        /* AJUSTE PARA EL BUSCADOR EN LA CABECERA */
+        /* AJUSTE PARA EL BUSCADOR Y BOTONES EN LA CABECERA */
         .inventory-header { 
             background-color: #111; 
             padding: 10px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
         }
         
+        .header-actions-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
         .search-container {
             width: 250px;
         }
@@ -99,6 +107,35 @@
             text-transform: uppercase;
         }
 
+        /* Título oculto en pantalla normal, visible solo al imprimir */
+        .print-title { display: none; }
+
+        /* =================================================== */
+        /* CONFIGURACIÓN EXCLUSIVA PARA LA IMPRESIÓN (MEDIOS)  */
+        /* =================================================== */
+        @media print {
+            body { background-color: #ffffff !important; color: #000000 !important; padding: 0; margin: 0; }
+            
+            /* Ocultamos todo lo que no sea la tabla de inventario */
+            .navbar, .btn-action, .row.g-3.mb-5, .inventory-header, th:nth-child(4), td:nth-child(4) { 
+                display: none !important; 
+            }
+            
+            /* Quitamos sombras y bordes redondeados innecesarios en el papel */
+            .inventory-box { border: none !important; box-shadow: none !important; background: transparent !important; }
+            
+            /* Mostramos un título formal en la parte superior del folio */
+            .print-title { display: block !important; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+            
+            /* Forzamos a que las fichas técnicas colapsables estén siempre abiertas en la impresión */
+            .collapse { display: table-row !important; height: auto !important; visibility: visible !important; }
+            .bi-plus-square { display: none !important; } /* Oculta el icono de '+' */
+            
+            /* Optimizar tablas para papel */
+            table { width: 100% !important; border-collapse: collapse !important; }
+            th { background-color: #f2f2f2 !important; color: #000 !important; }
+        }
+
         @media (max-width: 767px) {
             .nav-grid {
                 display: flex;
@@ -118,7 +155,9 @@
             .btn-header { font-size: 0.6rem !important; padding: 4px 8px !important; }
             .btn-action { padding: 20px 5px; font-size: 1rem; }
             .navbar-brand img { height: 30px !important; }
-            .search-container { width: 150px; }
+            .inventory-header { flex-direction: column; align-items: flex-start; }
+            .header-actions-container { width: 100%; justify-content: space-between; }
+            .search-container { width: 100%; flex-grow: 1; }
         }
     </style>
 </head>
@@ -149,6 +188,12 @@
     </nav>
 
     <div class="container mt-4">
+        
+        <div class="print-title">
+            <h2 class="m-0 fw-bold">EASD Valencia - Inventario de Portátiles TIC</h2>
+            <p class="text-muted small">Generado automáticamente el: {{ datetime.now().strftime('%d/%m/%Y %H:%M') if datetime else '' }}</p>
+        </div>
+
         <div class="row g-3 mb-5">
             <div class="col-6">
                 <a href="/prestar" class="btn-action btn-prestar">
@@ -165,8 +210,17 @@
         <div class="inventory-box">
             <div class="inventory-header">
                 <h6 class="m-0 text-info fw-bold small"><i class="bi bi-cpu me-2"></i>INVENTARIO ACTUAL</h6>
-                <div class="search-container">
-                    <input type="text" id="busqueda" class="form-control form-control-sm rounded-pill" placeholder="🔍 Buscar equipo...">
+                
+                <div class="header-actions-container">
+                    <div class="search-container">
+                        <input type="text" id="busqueda" class="form-control form-control-sm rounded-pill" placeholder="🔍 Buscar equipo...">
+                    </div>
+                    <a href="/exportar_csv" class="btn btn-success btn-sm rounded-pill px-3 fw-bold" title="Exportar a Excel / CSV">
+                        <i class="bi bi-file-earmark-excel me-1"></i> <span class="d-none d-sm-inline">CSV</span>
+                    </a>
+                    <button onclick="window.print();" class="btn btn-light btn-sm rounded-pill px-3 fw-bold" title="Imprimir Inventario">
+                        <i class="bi bi-printer me-1"></i> <span class="d-none d-sm-inline">Imprimir</span>
+                    </button>
                 </div>
             </div>
             <div class="table-responsive">
@@ -249,10 +303,8 @@
 
             filas.forEach(fila => {
                 let texto = fila.innerText.toLowerCase();
-                // Si el texto de la fila contiene lo que buscamos, se muestra, si no se oculta
                 if (texto.includes(filtro)) {
                     fila.style.display = "";
-                    // También ocultamos el panel expandible si estaba abierto para no dejar huecos
                     let collapseId = fila.querySelector('.text-id').getAttribute('data-bs-target');
                     let collapseEl = document.querySelector(collapseId);
                     if (collapseEl.classList.contains('show') && !texto.includes(filtro)) {
