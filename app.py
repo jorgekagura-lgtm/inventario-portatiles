@@ -1,8 +1,10 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, Response
 import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime
+import csv
+import io
 
 app = Flask(__name__)
 
@@ -208,6 +210,75 @@ def vaciar_historial():
     cur.close()
     conn.close()
     return redirect(url_for('historial'))
+
+
+# ==========================================
+# 10. NUEVA RUTA: EXPORTAR A CSV
+# ==========================================
+@app.route('/exportar_csv')
+def exportar_csv():
+    conn = conectar_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    query = '''
+        SELECT p.id, p.descripcion_tecnica, p.num_serie, p.ubicacion, p.estado, pr.persona 
+        FROM portatiles p
+        LEFT JOIN prestamos pr ON p.id = pr.id_portatil AND pr.fecha_devolucion IS NULL
+        ORDER BY p.fecha_registro ASC
+    '''
+    cur.execute(query)
+    portatiles = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    # Crear el stream de texto para el archivo CSV
+    si = io.StringIO()
+    cw = csv.writer(si, delimiter=';') # Usamos punto y coma para que Excel en español lo abra perfecto
+    
+    # Escribir las cabeceras del Excel / CSV
+    cw.writerow(['ID Portátil', 'Descripción Técnica', 'Número de Serie', 'Ubicación', 'Estado', 'Asignado a'])
+    
+    # Rellenar con los datos actuales
+    for p in portatiles:
+        cw.writerow([
+            p['id'], 
+            p['descripcion_tecnica'], 
+            p['num_serie'], 
+            p['ubicacion'], 
+            p['estado'], 
+            p['persona'] if p['persona'] else 'Nadie'
+        ])
+    
+    output = si.getvalue()
+    si.close()
+    
+    # Retornar respuesta HTTP de descarga de archivo
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={"Content-disposition": "attachment; filename=inventario_portatiles.csv"}
+    )
+
+
+# ==========================================
+# 11. NUEVA RUTA: VISTA DE IMPRESIÓN LIMPIA
+# ==========================================
+@app.route('/imprimir_inventario')
+def imprimir_inventario():
+    conn = conectar_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    query = '''
+        SELECT p.*, pr.persona 
+        FROM portatiles p
+        LEFT JOIN prestamos pr ON p.id = pr.id_portatil AND pr.fecha_devolucion IS NULL
+        ORDER BY p.fecha_registro ASC
+    '''
+    cur.execute(query)
+    portatiles = cur.fetchall()
+    cur.close()
+    conn.close()
+    # Esta ruta renderiza una plantilla especial diseñada para imprimirse directamente
+    return render_template('imprimir.html', portatiles=portatiles)
+
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
